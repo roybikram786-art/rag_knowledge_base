@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RAG-Based Knowledge Assistant Simulator</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+    }
+
+    :root{
+        --bg:#07111f;
+        --card:#101c2f;
+        --card2:#15253d;
+        --primary:#4da3ff;
+        --secondary:#00d4ff;
+        --text:#ffffff;
+        --muted:#9fb0c7;
+        --border:rgba(255,255,255,0.08);
+        --success:#1dd1a1;
+        --warning:#feca57;
+    }
+
+    body{
+        font-family:'Inter',sans-serif;
+        background:
+            radial-gradient(circle at top left,#12345b 0%,transparent 30%),
+            radial-gradient(circle at bottom right,#0c6b7f 0%,transparent 30%),
+            var(--bg);
+        color:var(--text);
+        min-height:100vh;
+        overflow-x:hidden;
+    }
+
+    .container{
+        width:100%;
+        max-width:1500px;
+        margin:auto;
+        padding:24px;
+    }
+
+    .hero{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:20px;
+        margin-bottom:25px;
+        flex-wrap:wrap;
+    }
+
+    .title-section h1{
+        font-size:40px;
+        font-weight:700;
+        background:linear-gradient(90deg,#fff,#4da3ff,#00d4ff);
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+    }
+
+    .title-section p{
+        color:var(--muted);
+        margin-top:10px;
+        max-width:700px;
+        line-height:1.6;
+    }
+
+    .badge{
+        background:rgba(77,163,255,0.15);
+        border:1px solid rgba(77,163,255,0.4);
+        color:#9ad0ff;
+        padding:10px 18px;
+        border-radius:999px;
+        font-size:14px;
+        font-weight:600;
+    }
+
+    .dashboard{
+        display:grid;
+        grid-template-columns:320px 1fr 380px;
+        gap:20px;
+    }
+
+    .card{
+        background:rgba(16,28,47,0.8);
+        border:1px solid var(--border);
+        backdrop-filter:blur(18px);
+        border-radius:24px;
+        padding:22px;
+        box-shadow:0 15px 40px rgba(0,0,0,0.25);
+    }
+
+    .card h2{
+        font-size:18px;
+        margin-bottom:18px;
+    }
+
+    .upload-zone{
+        border:2px dashed rgba(255,255,255,0.15);
+        border-radius:20px;
+        padding:28px;
+        text-align:center;
+        cursor:pointer;
+        transition:0.3s;
+        background:rgba(255,255,255,0.02);
+    }
+
+    .upload-zone:hover{
+        border-color:var(--primary);
+        background:rgba(77,163,255,0.08);
+    }
+
+    .upload-icon{
+        font-size:40px;
+        margin-bottom:10px;
+    }
+
+    input[type="file"]{
+        display:none;
+    }
+
+    .btn{
+        background:linear-gradient(135deg,var(--primary),var(--secondary));
+        border:none;
+        color:white;
+        padding:12px 18px;
+        border-radius:14px;
+        cursor:pointer;
+        font-weight:600;
+        transition:0.3s;
+    }
+
+    .btn:hover{
+        transform:translateY(-2px);
+        box-shadow:0 10px 25px rgba(77,163,255,0.3);
+    }
+
+    .stats{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:14px;
+        margin-top:18px;
+    }
+
+    .stat-box{
+        background:var(--card2);
+        padding:16px;
+        border-radius:18px;
+        border:1px solid var(--border);
+    }
+
+    .stat-box h3{
+        font-size:28px;
+        margin-bottom:5px;
+    }
+
+    .stat-box p{
+        color:var(--muted);
+        font-size:13px;
+    }
+
+    .pipeline{
+        margin-top:20px;
+    }
+
+    .step{
+        display:flex;
+        align-items:center;
+        gap:14px;
+        padding:14px;
+        background:rgba(255,255,255,0.03);
+        border-radius:16px;
+        margin-bottom:12px;
+        border:1px solid transparent;
+        transition:0.3s;
+    }
+
+    .step.active{
+        border-color:rgba(77,163,255,0.4);
+        background:rgba(77,163,255,0.08);
+    }
+
+    .step-num{
+        width:36px;
+        height:36px;
+        border-radius:12px;
+        background:linear-gradient(135deg,var(--primary),var(--secondary));
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:700;
+    }
+
+    .chat-container{
+        display:flex;
+        flex-direction:column;
+        height:80vh;
+    }
+
+    .chat-header{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:18px;
+    }
+
+    .live{
+        color:var(--success);
+        font-size:13px;
+    }
+
+    .chat-messages{
+        flex:1;
+        overflow-y:auto;
+        padding-right:8px;
+    }
+
+    .message{
+        margin-bottom:18px;
+        animation:fadeIn 0.4s ease;
+    }
+
+    .user{
+        text-align:right;
+    }
+
+    .bubble{
+        display:inline-block;
+        max-width:90%;
+        padding:16px 18px;
+        border-radius:18px;
+        line-height:1.7;
+    }
+
+    .user .bubble{
+        background:linear-gradient(135deg,var(--primary),#3d7eff);
+        color:white;
+    }
+
+    .bot .bubble{
+        background:rgba(255,255,255,0.06);
+        border:1px solid var(--border);
+    }
+
+    .sources{
+        margin-top:10px;
+        font-size:12px;
+        color:var(--muted);
+    }
+
+    .source-tag{
+        display:inline-block;
+        padding:6px 10px;
+        border-radius:999px;
+        background:rgba(255,255,255,0.06);
+        margin:5px 6px 0 0;
+    }
+
+    .chat-input{
+        display:flex;
+        gap:12px;
+        margin-top:20px;
+    }
+
+    .chat-input input{
+        flex:1;
+        background:rgba(255,255,255,0.06);
+        border:1px solid var(--border);
+        color:white;
+        padding:16px;
+        border-radius:16px;
+        outline:none;
+    }
+
+    .knowledge-panel{
+        height:80vh;
+        overflow-y:auto;
+    }
+
+    .chunk{
+        background:rgba(255,255,255,0.03);
+        border:1px solid var(--border);
+        border-radius:18px;
+        padding:16px;
+        margin-bottom:16px;
+    }
+
+    .chunk-header{
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:10px;
+    }
+
+    .score{
+        color:var(--warning);
+        font-weight:700;
+    }
+
+    .chunk p{
+        color:#d5e2f0;
+        font-size:14px;
+        line-height:1.7;
+    }
+
+    .mini-title{
+        font-size:13px;
+        text-transform:uppercase;
+        letter-spacing:1px;
+        color:var(--muted);
+        margin-bottom:12px;
+    }
+
+    .usecases{
+        display:flex;
+        flex-wrap:wrap;
+        gap:10px;
+        margin-top:20px;
+    }
+
+    .usecase{
+        padding:10px 14px;
+        background:rgba(255,255,255,0.04);
+        border-radius:999px;
+        border:1px solid var(--border);
+        font-size:13px;
+    }
+
+    .search-box{
+        margin-bottom:18px;
+    }
+
+    .search-box input{
+        width:100%;
+        background:rgba(255,255,255,0.06);
+        border:1px solid var(--border);
+        color:white;
+        padding:14px;
+        border-radius:16px;
+        outline:none;
+    }
+
+    .retrieval-box{
+        margin-top:20px;
+        padding:16px;
+        border-radius:18px;
+        background:linear-gradient(135deg,
+        rgba(77,163,255,0.15),
+        rgba(0,212,255,0.08));
+        border:1px solid rgba(77,163,255,0.25);
+    }
+
+    .retrieval-box h4{
+        margin-bottom:10px;
+    }
+
+    .footer{
+        margin-top:20px;
+        text-align:center;
+        color:var(--muted);
+        font-size:13px;
+    }
+
+    @keyframes fadeIn{
+        from{
+            opacity:0;
+            transform:translateY(10px);
+        }
+        to{
+            opacity:1;
+            transform:translateY(0);
+        }
+    }
+
+    @media(max-width:1200px){
+        .dashboard{
+            grid-template-columns:1fr;
+        }
+
+        .chat-container,
+        .knowledge-panel{
+            height:auto;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="hero">
+        <div class="title-section">
+            <h1>RAG-Based Knowledge Assistant</h1>
+            <p>
+                Modern Retrieval-Augmented Generation Simulator to understand how AI assistants
+                index documents, retrieve relevant knowledge chunks, and answer user queries.
+                Perfect for ERP documentation, onboarding, sales enablement, and product FAQs.
+            </p>
+        </div>
+
+        <div class="badge">
+            AI + Vector Search + Knowledge Retrieval
+        </div>
+    </div>
+
+    <div class="dashboard">
+
+        <!-- LEFT PANEL -->
+        <div class="card">
+
+            <h2>📂 Document Upload</h2>
+
+            <label class="upload-zone" for="fileInput">
+                <div class="upload-icon">☁️</div>
+                <h3>Upload Knowledge Files</h3>
+                <p style="margin-top:10px;color:var(--muted);font-size:14px;">
+                    TXT, PDF content simulation, ERP docs, SOPs, FAQs
+                </p>
+
+                <div style="margin-top:16px;">
+                    <button class="btn">Choose Files</button>
+                </div>
+            </label>
+
+            <input type="file" id="fileInput" multiple>
+
+            <div class="stats">
+
+                <div class="stat-box">
+                    <h3 id="docCount">0</h3>
+                    <p>Documents Indexed</p>
+                </div>
+
+                <div class="stat-box">
+                    <h3 id="chunkCount">0</h3>
+                    <p>Knowledge Chunks</p>
+                </div>
+
+            </div>
+
+            <div class="pipeline">
+                <div class="mini-title">RAG Pipeline</div>
+
+                <div class="step active">
+                    <div class="step-num">1</div>
+                    <div>
+                        <strong>Upload Documents</strong>
+                        <p style="font-size:13px;color:var(--muted);">
+                            Add ERP manuals, SOPs, product docs
+                        </p>
+                    </div>
+                </div>
+
+                <div class="step active">
+                    <div class="step-num">2</div>
+                    <div>
+                        <strong>Chunking</strong>
+                        <p style="font-size:13px;color:var(--muted);">
+                            Documents split into searchable chunks
+                        </p>
+                    </div>
+                </div>
+
+                <div class="step active">
+                    <div class="step-num">3</div>
+                    <div>
+                        <strong>Embedding Simulation</strong>
+                        <p style="font-size:13px;color:var(--muted);">
+                            Semantic indexing into vector database
+                        </p>
+                    </div>
+                </div>
+
+                <div class="step active">
+                    <div class="step-num">4</div>
+                    <div>
+                        <strong>Retrieval + Answer</strong>
+                        <p style="font-size:13px;color:var(--muted);">
+                            AI retrieves relevant content & responds
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="usecases">
+                <div class="usecase">ERP Assistant</div>
+                <div class="usecase">Onboarding Bot</div>
+                <div class="usecase">FAQ Engine</div>
+                <div class="usecase">Sales Enablement</div>
+            </div>
+
+        </div>
+
+        <!-- CENTER CHAT -->
+        <div class="card chat-container">
+
+            <div class="chat-header">
+                <div>
+                    <h2>🤖 AI Knowledge Assistant</h2>
+                    <p style="color:var(--muted);font-size:14px;">
+                        Ask questions from uploaded documents
+                    </p>
+                </div>
+
+                <div class="live">
+                    ● Vector Search Active
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+
+                <div class="message bot">
+                    <div class="bubble">
+                        👋 Welcome! Upload your ERP docs, onboarding manuals, SOPs,
+                        FAQs, or sales playbooks. Then ask questions to simulate a
+                        real RAG-based AI assistant.
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="chat-input">
+                <input
+                    type="text"
+                    id="questionInput"
+                    placeholder="Ask something like: How does inventory sync work?"
+                />
+
+                <button class="btn" onclick="askQuestion()">
+                    Ask AI
+                </button>
+            </div>
+
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="card knowledge-panel">
+
+            <h2>🧠 Retrieved Knowledge</h2>
+
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="searchKnowledge"
+                    placeholder="Search indexed chunks..."
+                    onkeyup="searchChunks()"
+                />
+            </div>
+
+            <div id="knowledgeChunks">
+
+                <div class="chunk">
+                    <div class="chunk-header">
+                        <strong>Chunk Preview</strong>
+                        <span class="score">92%</span>
+                    </div>
+
+                    <p>
+                        Upload files to simulate semantic chunk retrieval.
+                        Relevant chunks will appear here when questions are asked.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="retrieval-box">
+                <h4>⚡ How RAG Works</h4>
+
+                <p style="line-height:1.7;color:#d6e3f1;font-size:14px;">
+                    1. Upload documents<br>
+                    2. Split into chunks<br>
+                    3. Generate embeddings<br>
+                    4. Store in vector DB<br>
+                    5. Retrieve relevant chunks<br>
+                    6. Generate contextual answers
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Built as a modern RAG Knowledge Assistant Simulator • HTML + CSS + JS Only
+    </div>
+
+</div>
+
+<script>
+
+    let documents = [];
+    let chunks = [];
+
+    const sampleKnowledge = [
+        {
+            title:"ERP Inventory Sync",
+            content:"Inventory synchronization happens every 15 minutes between warehouse and store systems. Failed sync retries occur automatically after 5 minutes."
+        },
+        {
+            title:"Employee Onboarding",
+            content:"New employees receive access credentials within 24 hours. Managers must approve onboarding workflows before activation."
+        },
+        {
+            title:"Sales FAQ",
+            content:"Sales teams can access updated pricing sheets directly from the CRM integration panel in the ERP dashboard."
+        },
+        {
+            title:"Product Return Policy",
+            content:"Returns can be processed within 30 days of purchase. Refund approval requires invoice verification and warehouse validation."
+        },
+        {
+            title:"Order Processing",
+            content:"Orders move through stages including pending, packed, shipped, and delivered. Notifications are triggered at every stage."
+        }
+    ];
+
+    chunks = [...sampleKnowledge];
+
+    renderChunks(chunks);
+
+    document.getElementById("chunkCount").innerText = chunks.length;
+
+    document.getElementById("fileInput").addEventListener("change", function(e){
+
+        const files = e.target.files;
+
+        for(let file of files){
+
+            documents.push(file.name);
+
+            const fakeChunk = {
+                title:file.name,
+                content:"This uploaded document has been indexed into vector embeddings. AI can now retrieve semantic answers from this file."
+            };
+
+            chunks.push(fakeChunk);
+        }
+
+        document.getElementById("docCount").innerText = documents.length;
+        document.getElementById("chunkCount").innerText = chunks.length;
+
+        renderChunks(chunks);
+
+        addBotMessage("✅ Documents indexed successfully. Embeddings generated and stored in vector database.");
+    });
+
+    function askQuestion(){
+
+        const input = document.getElementById("questionInput");
+        const question = input.value.trim();
+
+        if(!question) return;
+
+        addUserMessage(question);
+
+        const relevantChunks = retrieveRelevantChunks(question);
+
+        renderChunks(relevantChunks);
+
+        const answer = generateAnswer(question, relevantChunks);
+
+        setTimeout(()=>{
+            addBotMessage(answer, relevantChunks);
+        },700);
+
+        input.value = "";
+    }
+
+    function retrieveRelevantChunks(query){
+
+        query = query.toLowerCase();
+
+        let results = chunks.filter(chunk =>
+            chunk.content.toLowerCase().includes(query) ||
+            chunk.title.toLowerCase().includes(query)
+        );
+
+        if(results.length === 0){
+            results = chunks.slice(0,3);
+        }
+
+        return results;
+    }
+
+    function generateAnswer(question, relevantChunks){
+
+        if(relevantChunks.length === 0){
+            return "I could not find relevant information in the uploaded knowledge base.";
+        }
+
+        return `
+            Based on retrieved knowledge, here’s the AI-generated response for:
+            <strong>"${question}"</strong><br><br>
+
+            ${relevantChunks[0].content}
+
+            <br><br>
+            The answer was generated using semantic retrieval from indexed knowledge chunks in the vector database.
+        `;
+    }
+
+    function addUserMessage(text){
+
+        const container = document.getElementById("chatMessages");
+
+        container.innerHTML += `
+            <div class="message user">
+                <div class="bubble">${text}</div>
+            </div>
+        `;
+
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function addBotMessage(text, sources=[]){
+
+        const container = document.getElementById("chatMessages");
+
+        let sourceHTML = "";
+
+        if(sources.length){
+
+            sourceHTML += `<div class="sources"><strong>Retrieved Sources:</strong><br>`;
+
+            sources.forEach(source=>{
+                sourceHTML += `
+                    <span class="source-tag">${source.title}</span>
+                `;
+            });
+
+            sourceHTML += `</div>`;
+        }
+
+        container.innerHTML += `
+            <div class="message bot">
+                <div class="bubble">
+                    ${text}
+                    ${sourceHTML}
+                </div>
+            </div>
+        `;
+
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function renderChunks(data){
+
+        const container = document.getElementById("knowledgeChunks");
+
+        container.innerHTML = "";
+
+        data.forEach((chunk,index)=>{
+
+            const score = Math.floor(Math.random() * 20) + 80;
+
+            container.innerHTML += `
+                <div class="chunk">
+                    <div class="chunk-header">
+                        <strong>${chunk.title}</strong>
+                        <span class="score">${score}%</span>
+                    </div>
+
+                    <p>${chunk.content}</p>
+                </div>
+            `;
+        });
+    }
+
+    function searchChunks(){
+
+        const query = document.getElementById("searchKnowledge").value.toLowerCase();
+
+        const filtered = chunks.filter(chunk =>
+            chunk.title.toLowerCase().includes(query) ||
+            chunk.content.toLowerCase().includes(query)
+        );
+
+        renderChunks(filtered);
+    }
+
+</script>
+
+</body>
+</html>
